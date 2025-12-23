@@ -1,6 +1,4 @@
-
-const { default: makeWASocket,useMultiFileAuthState,  DisconnectReason, downloadMediaMessage,generateWAMessageFromContent,fetchLatestWaWebVersion,proto
-} = require('@whiskeysockets/baileys');
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, downloadMediaMessage, generateWAMessageFromContent, fetchLatestWaWebVersion, proto } = require('@whiskeysockets/baileys');
 const pino = require('pino');
 const fs = require('fs');
 const path = require('path');
@@ -12,6 +10,7 @@ const { sendButtons, sendInteractiveMessage } = require('gifted-btns');
 const serializeMessage = require('./handler.js');
 global.generateWAMessageFromContent = generateWAMessageFromContent;
 global.proto = proto;
+
 // ===== CONFIGURATION ===== //
 global.BOT_PREFIX = '.';
 const AUTH_FOLDER = './auth_info_multi';
@@ -51,9 +50,6 @@ db.serialize(() => {
     });
 });
 
-/**
- * Restores authentication files from the database.
- */
 function restoreAuthFiles() {
     return new Promise((resolve) => {
         db.all("SELECT * FROM sessions", (err, rows) => {
@@ -67,11 +63,6 @@ function restoreAuthFiles() {
     });
 }
 
-/**
- * Saves authentication files to the database.
- *
- * This function checks if the AUTH_FOLDER exists and reads all files within it. For each file, it reads the content and attempts to insert or replace the corresponding entry in the sessions table of the database. Errors during the database operation are logged to the console, and any exceptions encountered during the process are also caught and logged.
- */
 function saveAuthFilesToDB() {
     try {
         if (!fs.existsSync(AUTH_FOLDER)) return;
@@ -106,6 +97,7 @@ async function startBot() {
             markOnlineOnConnect: true,
             syncFullHistory: false
         });
+        
         sock.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect, qr } = update;
 
@@ -174,7 +166,6 @@ async function startBot() {
             saveAuthFilesToDB();
         });
 
-
         const plugins = new Map();
         const pluginPath = path.join(__dirname, PLUGIN_FOLDER);
         try {
@@ -196,7 +187,6 @@ async function startBot() {
                 console.log(`📦 Loaded ${plugins.size} plugins`);
             }
         } catch (error) { console.error('Error loading plugins:', error); }
-
        
         sock.ev.on('messages.upsert', async ({ messages, type }) => {
             if (type !== 'notify') return;
@@ -243,86 +233,66 @@ async function startBot() {
     }
 }
 
-function serveStaticFile(urlPath, res) {
-    const staticPath = path.join(__dirname, 'public');
-    const filePath = path.join(staticPath, urlPath);
-    if (!filePath.startsWith(staticPath)) {
-        res.writeHead(403);
-        res.end('Forbidden');
-        return;
-    }
-
-    const ext = path.extname(filePath).toLowerCase();
-    const contentTypes = {
-        '.css': 'text/css',
-        '.js': 'application/javascript',
-        '.png': 'image/png',
-        '.jpg': 'image/jpeg',
-        '.jpeg': 'image/jpeg',
-        '.gif': 'image/gif',
-        '.svg': 'image/svg+xml',
-        '.ico': 'image/x-icon',
-        '.json': 'application/json',
-        '.html': 'text/html'
-    };
-
-    fs.readFile(filePath, (err, data) => {
-        if (err) {
-            console.error('Error serving static file:', err);
-            res.writeHead(404);
-            res.end('File not found');
-            return;
-        }
-        
-        res.writeHead(200, { 
-            'Content-Type': contentTypes[ext] || 'text/plain',
-            'Cache-Control': 'public, max-age=3600'
-        });
-        res.end(data);
-    });
-}
-
-http.createServer(async (req, res) => {
-    const url = new URL(req.url, `http://${req.headers.host}`);
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+// SIMPLE HTML SERVER
+const server = http.createServer((req, res) => {
+    const url = req.url;
     
-    if (req.method === 'OPTIONS') {
-        res.writeHead(200);
-        return res.end();
-    }
+    if (url === '/' || url === '/qr') {
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        res.end(`
+<html>
+<head><title>WhatsApp Bot</title></head>
+<body>
+<center>
+<h1>WhatsApp Bot</h1>
+<h3>Status: ${botStatus}</h3>
 
-    if (url.pathname === '/style.css' || url.pathname === '/script.js') {
-        serveStaticFile(url.pathname, res);
-        return;
-    }
+<h4>Scan QR Code</h4>
+${latestQR ? `<img src="${latestQR}" width="300"><br><br>` : '<p>No QR code yet</p>'}
 
-    if (url.pathname === '/' || url.pathname === '/qr' || url.pathname === '/pair') {
-        let page = 'index.html';
-        if (url.pathname === '/qr') page = 'qr.html';
-        if (url.pathname === '/pair') page = 'pair.html';
-        serveStaticFile(page, res);
-        return;
-    }
+<h4>OR Pair with Phone</h4>
+<form method="POST" action="/pair">
+Phone: <input type="text" name="phone" placeholder="911234567890"><br><br>
+<button type="submit">Get Code</button>
+</form>
 
-    if (url.pathname === '/api/status') {
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ 
-            status: 'online', 
-            botStatus, 
-            prefix: global.BOT_PREFIX, 
-            time: new Date().toISOString(),
-            hasQR: !!latestQR,
-            latestQR: latestQR,
-            pairingCodesCount: pairingCodes.size,
-            version: '1.0.0',
-            author: 'ABZTech'
-        }));
-        return;
-    }
+<br>
+<button onclick="location.reload()">Refresh</button>
 
-    if (url.pathname === '/api/pair' && req.method === 'POST') {
+<br><br>
+<hr>
+<p>Prefix: ${global.BOT_PREFIX} | Port: ${PORT}</p>
+</center>
+
+<script>
+if("${botStatus}" !== "connected") {
+    setTimeout(() => location.reload(), 5000);
+}
+</script>
+</body>
+</html>
+        `);
+    } 
+    
+    else if (url === '/pair' && req.method === 'GET') {
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end(`
+<html>
+<body>
+<center>
+<h1>Pair WhatsApp</h1>
+<form method="POST">
+Phone: <input type="text" name="phone"><br><br>
+<button type="submit">Get Code</button><br><br>
+<a href="/">Back</a>
+</form>
+</center>
+</body>
+</html>
+        `);
+    }
+    
+    else if (url === '/pair' && req.method === 'POST') {
         let body = '';
         req.on('data', chunk => body += chunk);
         req.on('end', async () => {
@@ -331,25 +301,27 @@ http.createServer(async (req, res) => {
                 let phoneNumber = params.get('phone').trim();
                 
                 if (!phoneNumber) {
-                    res.writeHead(400, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ error: 'Phone number is required' }));
+                    res.writeHead(200, { 'Content-Type': 'text/html' });
+                    res.end(`
+<center>
+<h2>Error: Phone required</h2>
+<a href="/pair">Try Again</a>
+</center>
+                    `);
                     return;
                 }
 
                 phoneNumber = phoneNumber.replace(/\D/g, '');
-                if (phoneNumber.length < 8) {
-                    res.writeHead(400, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ error: 'Invalid phone number' }));
-                    return;
-                }
-
-                console.log(`📱 Requesting pairing code for: ${phoneNumber}, Bot status: ${botStatus}`);
                 
                 if (botStatus !== 'connecting' || !sock) {
-                    res.writeHead(400, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ 
-                        error: `Bot not ready for pairing. Current status: ${botStatus}. Please wait for "connecting" state.` 
-                    }));
+                    res.writeHead(200, { 'Content-Type': 'text/html' });
+                    res.end(`
+<center>
+<h2>Bot not ready</h2>
+<p>Status: ${botStatus}</p>
+<a href="/">Go Back</a>
+</center>
+                    `);
                     return;
                 }
 
@@ -359,45 +331,61 @@ http.createServer(async (req, res) => {
                     code: pairingCode,
                     timestamp: Date.now()
                 });
-                const now = Date.now();
-                for (let [number, data] of pairingCodes.entries()) {
-                    if (now - data.timestamp > 10 * 60 * 1000) {
-                        pairingCodes.delete(number);
-                    }
-                }
 
-                res.writeHead(200, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ 
-                    success: true,
-                    phoneNumber: phoneNumber,
-                    pairingCode: pairingCode
-                }));
+                res.writeHead(200, { 'Content-Type': 'text/html' });
+                res.end(`
+<html>
+<body>
+<center>
+<h1>Pairing Code</h1>
+<h2>Phone: ${phoneNumber}</h2>
+<h3 style="color:green;">Code: ${pairingCode}</h3>
+<p>Go to WhatsApp > Settings > Linked Devices > Link a Device > Use pairing code</p>
+<br>
+<a href="/">Home</a> | <a href="/pair">Pair Another</a>
+</center>
+</body>
+</html>
+                `);
 
-                console.log(`✅ Pairing code generated for ${phoneNumber}: ${pairingCode}`);
+                console.log(`✅ Pairing code for ${phoneNumber}: ${pairingCode}`);
                 
             } catch (error) {
-                console.error(' Pairing code error:', error);
+                console.error('Pair error:', error);
                 
-                let errorMessage = error.message;
-                if (errorMessage.includes('check phone number')) {
-                    errorMessage = 'Please check your phone number and try again. Make sure it includes country code without +.';
-                } else if (errorMessage.includes('not registered')) {
-                    errorMessage = 'This phone number is not registered on WhatsApp.';
-                }
-                
-                res.writeHead(500, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ error: errorMessage }));
+                res.writeHead(200, { 'Content-Type': 'text/html' });
+                res.end(`
+<center>
+<h2>Error</h2>
+<p>${error.message}</p>
+<a href="/pair">Try Again</a>
+</center>
+                `);
             }
         });
         return;
     }
-
-    res.writeHead(404);
-    res.end('Not found');
-}).listen(PORT, () => {
-    console.log(`Bot running at http://localhost:${PORT}`);
-    console.log(`Serving static files from: ${path.join(__dirname, 'public')}`);
+    
+    else if (url === '/api/status') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ 
+            status: botStatus,
+            hasQR: !!latestQR,
+            qr: latestQR,
+            prefix: global.BOT_PREFIX
+        }));
+    }
+    
+    else {
+        res.writeHead(404, { 'Content-Type': 'text/html' });
+        res.end('<center><h1>404</h1><a href="/">Home</a></center>');
+    }
 });
+
+server.listen(PORT, () => {
+    console.log(`✅ Bot running at http://localhost:${PORT}`);
+});
+
 process.on('uncaughtException', (err) => {
     console.error('Uncaught Exception:', err);
 });
@@ -405,12 +393,3 @@ process.on('uncaughtException', (err) => {
 process.on('unhandledRejection', (reason, promise) => {
     console.error('Unhandled Rejection:', reason);
 });
-
-process.on('rejectionHandled', (promise) => {
-    console.warn('Rejection handled later:', promise);
-});
-
-process.on('multipleResolves', (type, promise, reason) => {
-    console.warn('Multiple Resolves:', type, reason);
-});
-
