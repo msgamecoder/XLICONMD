@@ -1,6 +1,4 @@
 const { sendInteractiveMessage } = require('gifted-btns');
-const sqlite3 = require('sqlite3').verbose();
-const db = new sqlite3.Database('./session.db');
 
 module.exports = {
     name: 'menu2',
@@ -9,21 +7,10 @@ module.exports = {
 
     async execute(sock, m) {
         try {
-            const prefix = await new Promise((resolve, reject) => {
-                db.get("SELECT value FROM settings WHERE key = 'prefix'", (err, row) => {
-                    if (err) {
-                        console.error('Database error:', err);
-                        resolve(global.BOT_PREFIX || '.');
-                    } else {
-                        resolve(row ? row.value : (global.BOT_PREFIX || '.'));
-                    }
-                });
-            });
-            
             await sendInteractiveMessage(sock, m.from, {
                 title: '🤖 ABZTech ᴍᴜʟᴛɪᴅᴇᴠɪᴄᴇ',
                 text: `Tap any button below to execute the command instantly:\n\n` +
-                      `Current prefix: *${prefix}*\n\n` +
+                      `Current prefix: *${global.BOT_PREFIX}*\n\n` +
                       '> 「 𝙏𝙞𝙢𝙚 - 𝙏𝙞𝙢𝙚𝙡𝙚𝙨𝙨 」',
                 footer: 'Instant commands • https://abztech.xyz',
                 interactiveButtons: [
@@ -31,28 +18,28 @@ module.exports = {
                         name: 'quick_reply',
                         buttonParamsJson: JSON.stringify({ 
                             display_text: 'Owner', 
-                            id: `${prefix}owner` 
+                            id: `${global.BOT_PREFIX}owner` 
                         })
                     },
                     {
                         name: 'quick_reply',
                         buttonParamsJson: JSON.stringify({ 
                             display_text: 'Alive', 
-                            id: `${prefix}alive` 
+                            id: `${global.BOT_PREFIX}alive` 
                         })
                     },
                     {
                         name: 'quick_reply',
                         buttonParamsJson: JSON.stringify({ 
                             display_text: 'Uptime', 
-                            id: `${prefix}uptime` 
+                            id: `${global.BOT_PREFIX}uptime` 
                         })
                     },
                     {
                         name: 'quick_reply',
                         buttonParamsJson: JSON.stringify({ 
                             display_text: 'Ping', 
-                            id: `${prefix}ping` 
+                            id: `${global.BOT_PREFIX}ping` 
                         })
                     }
                 ]
