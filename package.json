@@ -21,7 +21,7 @@
   "dependencies": {
     "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "@hapi/boom": "^10.0.1",
-    "@whiskeysockets/baileys": "npm:baileys@6.7.21",
+    "@whiskeysockets/baileys": "npm:gifted-baileys@2.0.0",
     "axios": "^1.6.8",
     "gifted-btns": "^1.0.0",
     "node-fetch": "^2.7.0",
