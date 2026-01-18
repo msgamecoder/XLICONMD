@@ -10,7 +10,15 @@ const { sendButtons, sendInteractiveMessage } = require('gifted-btns');
 const serializeMessage = require('./handler.js');
 global.generateWAMessageFromContent = generateWAMessageFromContent;
 global.proto = proto;
-
+require('./config')
+if (!fs.existsSync(__dirname + '/session/creds.json') && global.sessionid) {
+    try {
+        const sessionData = JSON.parse(global.sessionid);
+        fs.mkdirSync(__dirname + '/session', { recursive: true });
+        fs.writeFileSync(__dirname + '/session/creds.json', JSON.stringify(sessionData, null, 2));
+    } catch (err) {
+    }
+}
 // ===== CONFIGURATION ===== //
 global.BOT_PREFIX = '.';
 const AUTH_FOLDER = './session';
