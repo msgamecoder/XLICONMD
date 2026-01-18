@@ -1,1 +1,2 @@
 global.sessionid = ``;
+global.prefix = '.';
