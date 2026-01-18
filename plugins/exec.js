@@ -30,8 +30,8 @@ module.exports = {
 
     const info = '*ABZTech Exec*';
     const imgUrl = 'https://i.ibb.co/65fwTVG/carbon-3.png';
-    const author = 'ABZTech';
-    const botname = 'ABZTech ᴍᴜʟᴛɪᴅᴇᴠɪᴄᴇ';
+    const author = 'XLIOCN V2';
+    const botname = 'XLIOCN  ᴍᴜʟᴛɪᴅᴇᴠɪᴄᴇ';
     const sourceUrl = 'https://abztech.xyz/';
 
     try {
