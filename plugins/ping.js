@@ -10,10 +10,10 @@ module.exports = {
         await m.reply('Pinging...');
         const latency = Date.now() - start;
         const info = `> Latency: ${latency} ms`;
-        const imgUrl = 'https://i.ibb.co/65fwTVG/carbon-3.png';
-        const author = 'ABZTech';
-        const botname = 'ABZTech ᴍᴜʟᴛɪᴅᴇᴠɪᴄᴇ';
-        const sourceUrl = 'https://abztech.xyz/';
+        const imgUrl = 'https://i.ibb.co/39GRRMX2/img-2m0cfk6r.jpg';
+        const author = 'XLIOCN V2';
+        const botname = 'XLIOCN V2 ᴍᴜʟᴛɪᴅᴇᴠɪᴄᴇ';
+        const sourceUrl = 'https://abztech.my.id/';
 
         try {
             const thumbnailBuffer = (await axios.get(imgUrl, { responseType: 'arraybuffer' })).data;
