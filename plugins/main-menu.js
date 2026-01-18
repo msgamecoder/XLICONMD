@@ -8,7 +8,7 @@ module.exports = {
         const prefix = '.';
 
         const menuText = `
-            XLIOCN V2 *ᴍᴜʟᴛɪᴅᴇᴠɪᴄᴇ*  
+            XLIOCN *ᴍᴜʟᴛɪᴅᴇᴠɪᴄᴇ*  
 
   ┌─ム *Available Commands*
   ┃ ᪣  ${prefix}alive
@@ -28,7 +28,7 @@ module.exports = {
         `.trim();
 
         const imgUrl = 'https://files.catbox.moe/uz899q.jpg';
-        const author = 'XLICON';
+        const author = 'XLICON V2';
         const botname = 'XLICON ᴍᴜʟᴛɪᴅᴇᴠɪᴄᴇ';
         const sourceUrl = 'https://abztech.my.id/';
 
