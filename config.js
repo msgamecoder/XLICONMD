@@ -1,1 +1,1 @@
-global.sessionid = ;
+global.sessionid = ``;
