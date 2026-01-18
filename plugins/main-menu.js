@@ -8,7 +8,7 @@ module.exports = {
         const prefix = '.';
 
         const menuText = `
-             ABZTech *ᴍᴜʟᴛɪᴅᴇᴠɪᴄᴇ*  
+            XLIOCN V2 *ᴍᴜʟᴛɪᴅᴇᴠɪᴄᴇ*  
 
   ┌─ム *Available Commands*
   ┃ ᪣  ${prefix}alive
@@ -27,10 +27,10 @@ module.exports = {
 > 「 𝙏𝙞𝙢𝙚 - 𝙏𝙞𝙢𝙚𝙡𝙚𝙨𝙨 」
         `.trim();
 
-        const imgUrl = 'https://i.ibb.co/65fwTVG/carbon-3.png';
-        const author = 'ABZTech';
-        const botname = 'ABZTech ᴍᴜʟᴛɪᴅᴇᴠɪᴄᴇ';
-        const sourceUrl = 'https://abztech.xyz/';
+        const imgUrl = 'https://files.catbox.moe/uz899q.jpg';
+        const author = 'XLICON';
+        const botname = 'XLICON ᴍᴜʟᴛɪᴅᴇᴠɪᴄᴇ';
+        const sourceUrl = 'https://abztech.my.id/';
 
         try {
             const thumbnailBuffer = (await axios.get(imgUrl, { responseType: 'arraybuffer' })).data;
