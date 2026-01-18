@@ -27,12 +27,6 @@ global.BOT_PREFIX = '.';
 const AUTH_FOLDER = './session';
 const PLUGIN_FOLDER = './plugins';
 const PORT = process.env.PORT || 3000;
-
-const owners = [
-    '25770239992037@lid',
-    '233533763772@s.whatsapp.net'
-];
-global.owners = owners;
 // ========================= //
 
 let latestQR = '';
