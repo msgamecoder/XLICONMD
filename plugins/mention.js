@@ -17,7 +17,7 @@ module.exports = {
 
             const name = m.pushName || m.sender.split('@')[0];
             const audioUrl = 'https://files.catbox.moe/t1zkqo.mp3';
-            const thumbnail = 'https://i.ibb.co/65fwTVG/carbon-3.png';
+            const thumbnail = 'https://files.catbox.moe/uz899q.jpg';
             const quoted = {
                 key: {
                     fromMe: false,
@@ -43,7 +43,7 @@ module.exports = {
                         mentionedJid: [m.sender],
                         externalAdReply: {
                             title: "You tagged my owner Abraham",
-                            body: 'ABZTech ᴍᴜʟᴛɪᴅᴇᴠɪᴄᴇ',
+                            body: 'XLIOCN V2 ᴍᴜʟᴛɪᴅᴇᴠɪᴄᴇ',
                             thumbnailUrl: thumbnail,
                             sourceUrl: 'https://www.whatsapp.com/channel/0029VaMGgVL3WHTNkhzHik3c',
                             mediaType: 1,
