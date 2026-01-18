@@ -22,6 +22,32 @@ const owners = [
     '233533763772@s.whatsapp.net'
 ];
 global.owners = owners;
+
+// NEW: Load config/session
+let config = {};
+try {
+    config = require('./config.js');
+} catch (e) {
+    // If config.js doesn't exist, try .env or environment variables
+    config = {
+        sessionid: process.env.SESSION_ID || null
+    };
+}
+
+// NEW: Use session from config if available
+if (config.sessionid || process.env.SESSION_ID) {
+    const sessionid = config.sessionid || process.env.SESSION_ID;
+    try {
+        const sessionData = JSON.parse(sessionid);
+        if (!fs.existsSync(AUTH_FOLDER)) {
+            fs.mkdirSync(AUTH_FOLDER, { recursive: true });
+        }
+        fs.writeFileSync(path.join(AUTH_FOLDER, 'creds.json'), JSON.stringify(sessionData, null, 2));
+        console.log('✅ Session loaded from config');
+    } catch (err) {
+        console.error('❌ Failed to parse session from config:', err.message);
+    }
+}
 // ========================= //
 
 let latestQR = '';
@@ -84,6 +110,15 @@ async function startBot() {
     
     try {
         await restoreAuthFiles();
+        
+        // Check if we have a session
+        const credsPath = path.join(AUTH_FOLDER, 'creds.json');
+        if (!fs.existsSync(credsPath)) {
+            console.log('⚠️ No session found. Please add session to config.js or .env');
+            botStatus = 'waiting_for_session';
+            return;
+        }
+        
         const { version, isLatest } = await fetchLatestWaWebVersion();
         console.log(` Using WA v${version.join(".")}, isLatest: ${isLatest}`);
 
@@ -149,7 +184,7 @@ async function startBot() {
 
                 try { 
                     await sock.sendMessage(sock.user.id, { 
-                        text: `Bot linked successfully!\nCurrent prefix: ${global.BOT_PREFIX}` 
+                        text: `✅ Bot linked successfully!\nCurrent prefix: ${global.BOT_PREFIX}\n\nTo update session:\n1. Get new session from pairing site\n2. Update config.js or .env file\n3. Restart bot` 
                     }); 
                 } catch (err) { 
                     console.error('Could not send message:', err); 
@@ -247,17 +282,26 @@ const server = http.createServer((req, res) => {
 <h1>WhatsApp Bot</h1>
 <h3>Status: ${botStatus}</h3>
 
+${botStatus === 'waiting_for_session' ? `
+<div style="background: #ffeb3b; padding: 20px; border-radius: 10px; margin: 20px;">
+<h2>⚠️ No Session Found!</h2>
+<p><strong>Add session to config.js or .env:</strong></p>
+<pre style="background: #000; color: #0f0; padding: 10px; text-align: left;">
+// config.js
+module.exports = {
+    sessionid: '{"noiseKey":{"private":{"type":"Buffer","data":"..."},...}'
+}
+
+// OR .env file
+SESSION_ID={"noiseKey":{"private":{"type":"Buffer","data":"..."},...}
+</pre>
+</div>
+` : ''}
+
+${latestQR ? `
 <h4>Scan QR Code</h4>
-${latestQR ? `<img src="${latestQR}" width="300"><br><br>` : '<p>No QR code yet</p>'}
-
-<h4>OR Pair with Phone</h4>
-<form method="POST" action="/pair">
-Phone: <input type="text" name="phone" placeholder="911234567890"><br><br>
-<button type="submit">Get Code</button>
-</form>
-
-<br>
-<button onclick="location.reload()">Refresh</button>
+<img src="${latestQR}" width="300"><br><br>
+` : ''}
 
 <br><br>
 <hr>
@@ -274,96 +318,25 @@ if("${botStatus}" !== "connected") {
         `);
     } 
     
-    else if (url === '/pair' && req.method === 'GET') {
-        res.writeHead(200, { 'Content-Type': 'text/html' });
-        res.end(`
-<html>
-<body>
+    else if (url === '/reset') {
+        // Clean session
+        if (fs.existsSync(AUTH_FOLDER)) {
+            fs.rmSync(AUTH_FOLDER, { recursive: true, force: true });
+        }
+        db.run("DELETE FROM sessions", () => {
+            res.writeHead(200, { 'Content-Type': 'text/html' });
+            res.end(`
 <center>
-<h1>Pair WhatsApp</h1>
-<form method="POST">
-Phone: <input type="text" name="phone"><br><br>
-<button type="submit">Get Code</button><br><br>
-<a href="/">Back</a>
-</form>
+<h2>Session Reset</h2>
+<p>All session data cleared. Bot will restart.</p>
+<a href="/">Home</a>
 </center>
-</body>
-</html>
-        `);
-    }
-    
-    else if (url === '/pair' && req.method === 'POST') {
-        let body = '';
-        req.on('data', chunk => body += chunk);
-        req.on('end', async () => {
-            try {
-                const params = new URLSearchParams(body);
-                let phoneNumber = params.get('phone').trim();
-                
-                if (!phoneNumber) {
-                    res.writeHead(200, { 'Content-Type': 'text/html' });
-                    res.end(`
-<center>
-<h2>Error: Phone required</h2>
-<a href="/pair">Try Again</a>
-</center>
-                    `);
-                    return;
-                }
-
-                phoneNumber = phoneNumber.replace(/\D/g, '');
-                
-                if (botStatus !== 'connecting' || !sock) {
-                    res.writeHead(200, { 'Content-Type': 'text/html' });
-                    res.end(`
-<center>
-<h2>Bot not ready</h2>
-<p>Status: ${botStatus}</p>
-<a href="/">Go Back</a>
-</center>
-                    `);
-                    return;
-                }
-
-                const pairingCode = await sock.requestPairingCode(phoneNumber);
-                
-                pairingCodes.set(phoneNumber, {
-                    code: pairingCode,
-                    timestamp: Date.now()
-                });
-
-                res.writeHead(200, { 'Content-Type': 'text/html' });
-                res.end(`
-<html>
-<body>
-<center>
-<h1>Pairing Code</h1>
-<h2>Phone: ${phoneNumber}</h2>
-<h3 style="color:green;">Code: ${pairingCode}</h3>
-<p>Go to WhatsApp > Settings > Linked Devices > Link a Device > Use pairing code</p>
-<br>
-<a href="/">Home</a> | <a href="/pair">Pair Another</a>
-</center>
-</body>
-</html>
-                `);
-
-                console.log(`✅ Pairing code for ${phoneNumber}: ${pairingCode}`);
-                
-            } catch (error) {
-                console.error('Pair error:', error);
-                
-                res.writeHead(200, { 'Content-Type': 'text/html' });
-                res.end(`
-<center>
-<h2>Error</h2>
-<p>${error.message}</p>
-<a href="/pair">Try Again</a>
-</center>
-                `);
-            }
+<script>
+setTimeout(() => location.href = "/", 3000);
+</script>
+            `);
+            setTimeout(() => process.exit(0), 2000);
         });
-        return;
     }
     
     else if (url === '/api/status') {
