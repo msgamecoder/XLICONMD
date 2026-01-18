@@ -1,4 +1,4 @@
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, downloadMediaMessage, generateWAMessageFromContent, fetchLatestWaWebVersion, proto } = require('@whiskeysockets/baileys');
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestWaWebVersion } = require('@whiskeysockets/baileys');
 const pino = require('pino');
 const fs = require('fs');
 const path = require('path');
@@ -6,10 +6,7 @@ const http = require('http');
 const QRCode = require('qrcode');
 const { Boom } = require('@hapi/boom');
 const sqlite3 = require('sqlite3').verbose();
-const { sendButtons, sendInteractiveMessage } = require('gifted-btns');
 const serializeMessage = require('./handler.js');
-global.generateWAMessageFromContent = generateWAMessageFromContent;
-global.proto = proto;
 
 // ===== CONFIGURATION ===== //
 global.BOT_PREFIX = '.';
@@ -23,18 +20,17 @@ const owners = [
 ];
 global.owners = owners;
 
-// NEW: Load config/session
+// Load config/session
 let config = {};
 try {
     config = require('./config.js');
 } catch (e) {
-    // If config.js doesn't exist, try .env or environment variables
     config = {
         sessionid: process.env.SESSION_ID || null
     };
 }
 
-// NEW: Use session from config if available
+// Use session from config if available
 if (config.sessionid || process.env.SESSION_ID) {
     const sessionid = config.sessionid || process.env.SESSION_ID;
     try {
@@ -52,8 +48,6 @@ if (config.sessionid || process.env.SESSION_ID) {
 
 let latestQR = '';
 let botStatus = 'disconnected';
-let pairingCodes = new Map();
-let presenceInterval = null;
 let sock = null;
 let isConnecting = false;
 const db = new sqlite3.Database('./session.db');
@@ -89,21 +83,6 @@ function restoreAuthFiles() {
     });
 }
 
-function saveAuthFilesToDB() {
-    try {
-        if (!fs.existsSync(AUTH_FOLDER)) return;
-        fs.readdirSync(AUTH_FOLDER).forEach(file => {
-            const filePath = path.join(AUTH_FOLDER, file);
-            const content = fs.readFileSync(filePath, 'utf8');
-            db.run("INSERT OR REPLACE INTO sessions (filename, content) VALUES (?, ?)", [file, content], (err) => {
-                if (err) console.error(`Failed to save ${file}:`, err);
-            });
-        });
-    } catch (error) {
-        console.error('Error saving auth files to DB:', error);
-    }
-}
-
 async function startBot() {
     console.log(' Starting WhatsApp Bot...');
     isConnecting = true;
@@ -111,10 +90,13 @@ async function startBot() {
     try {
         await restoreAuthFiles();
         
-        // Check if we have a session
         const credsPath = path.join(AUTH_FOLDER, 'creds.json');
         if (!fs.existsSync(credsPath)) {
-            console.log('⚠️ No session found. Please add session to config.js or .env');
+            console.log('⚠️ No session found. Please add session to config.js:');
+            console.log('   1. Get session from pairing website');
+            console.log('   2. Copy the session JSON from WhatsApp');
+            console.log('   3. Paste into config.js as sessionid');
+            console.log('   4. Restart bot');
             botStatus = 'waiting_for_session';
             return;
         }
@@ -137,19 +119,15 @@ async function startBot() {
             const { connection, lastDisconnect, qr } = update;
 
             if (qr) {
-                console.log('Generating QR code for web...');
+                console.log('Generating QR code...');
                 QRCode.toDataURL(qr, (err, url) => { 
-                    if (!err) {
-                        latestQR = url;
-                        console.log('QR code generated for web');
-                    }
+                    if (!err) latestQR = url;
                 });
             }
 
             if (connection === 'close') {
                 botStatus = 'disconnected';
                 isConnecting = false;
-                if (presenceInterval) clearInterval(presenceInterval);
 
                 const statusCode = (lastDisconnect?.error instanceof Boom)
                     ? lastDisconnect.error.output.statusCode
@@ -178,13 +156,9 @@ async function startBot() {
                 isConnecting = false;
                 console.log('Bot is connected ✅');
 
-                presenceInterval = setInterval(() => {
-                    if (sock?.ws?.readyState === 1) sock.sendPresenceUpdate('available');
-                }, 10000);
-
                 try { 
                     await sock.sendMessage(sock.user.id, { 
-                        text: `✅ Bot linked successfully!\nCurrent prefix: ${global.BOT_PREFIX}\n\nTo update session:\n1. Get new session from pairing site\n2. Update config.js or .env file\n3. Restart bot` 
+                        text: `✅ Xlicon Bot linked successfully!\nPrefix: ${global.BOT_PREFIX}` 
                     }); 
                 } catch (err) { 
                     console.error('Could not send message:', err); 
@@ -198,7 +172,18 @@ async function startBot() {
 
         sock.ev.on('creds.update', async () => {
             await saveCreds();
-            saveAuthFilesToDB();
+            // Save to DB
+            try {
+                if (fs.existsSync(AUTH_FOLDER)) {
+                    fs.readdirSync(AUTH_FOLDER).forEach(file => {
+                        const filePath = path.join(AUTH_FOLDER, file);
+                        const content = fs.readFileSync(filePath, 'utf8');
+                        db.run("INSERT OR REPLACE INTO sessions (filename, content) VALUES (?, ?)", [file, content]);
+                    });
+                }
+            } catch (error) {
+                console.error('Error saving auth files to DB:', error);
+            }
         });
 
         const plugins = new Map();
@@ -229,13 +214,9 @@ async function startBot() {
             for (const rawMsg of messages) {
                 if (rawMsg.key.remoteJid === 'status@broadcast' && rawMsg.key.participant) {
                     try {
-                        console.log(`📱 Status detected from: ${rawMsg.key.participant}`);
                         await sock.readMessages([rawMsg.key]);
-                        console.log('✅ Status marked as viewed');
                         continue;
-                    } catch (err) {
-                        console.log('❌ Status viewer error:', err.message);
-                    }
+                    } catch (err) {}
                 }
             }
 
@@ -247,12 +228,14 @@ async function startBot() {
             if (m.body.startsWith(global.BOT_PREFIX)) {
                 const args = m.body.slice(global.BOT_PREFIX.length).trim().split(/\s+/);
                 const commandName = args.shift().toLowerCase();
+                
                 const plugin = plugins.get(commandName);
                 if (plugin) {
                     try { await plugin.execute(sock, m, args); }
-                    catch (err) { console.error(`Plugin error (${commandName}):`, err); await m.reply('Error running command.'); }
+                    catch (err) { console.error(`Plugin error (${commandName}):`, err); }
                 }
             }
+            
             for (const plugin of plugins.values()) {
                 if (typeof plugin.onMessage === 'function') {
                     try { await plugin.onMessage(sock, m); }
@@ -268,95 +251,33 @@ async function startBot() {
     }
 }
 
-// SIMPLE HTML SERVER
+// SIMPLE HTTP SERVER - ONLY STATUS API
 const server = http.createServer((req, res) => {
     const url = req.url;
     
-    if (url === '/' || url === '/qr') {
-        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-        res.end(`
-<html>
-<head><title>WhatsApp Bot</title></head>
-<body>
-<center>
-<h1>WhatsApp Bot</h1>
-<h3>Status: ${botStatus}</h3>
-
-${botStatus === 'waiting_for_session' ? `
-<div style="background: #ffeb3b; padding: 20px; border-radius: 10px; margin: 20px;">
-<h2>⚠️ No Session Found!</h2>
-<p><strong>Add session to config.js or .env:</strong></p>
-<pre style="background: #000; color: #0f0; padding: 10px; text-align: left;">
-// config.js
-module.exports = {
-    sessionid: '{"noiseKey":{"private":{"type":"Buffer","data":"..."},...}'
-}
-
-// OR .env file
-SESSION_ID={"noiseKey":{"private":{"type":"Buffer","data":"..."},...}
-</pre>
-</div>
-` : ''}
-
-${latestQR ? `
-<h4>Scan QR Code</h4>
-<img src="${latestQR}" width="300"><br><br>
-` : ''}
-
-<br><br>
-<hr>
-<p>Prefix: ${global.BOT_PREFIX} | Port: ${PORT}</p>
-</center>
-
-<script>
-if("${botStatus}" !== "connected") {
-    setTimeout(() => location.reload(), 5000);
-}
-</script>
-</body>
-</html>
-        `);
-    } 
-    
-    else if (url === '/reset') {
-        // Clean session
-        if (fs.existsSync(AUTH_FOLDER)) {
-            fs.rmSync(AUTH_FOLDER, { recursive: true, force: true });
-        }
-        db.run("DELETE FROM sessions", () => {
-            res.writeHead(200, { 'Content-Type': 'text/html' });
-            res.end(`
-<center>
-<h2>Session Reset</h2>
-<p>All session data cleared. Bot will restart.</p>
-<a href="/">Home</a>
-</center>
-<script>
-setTimeout(() => location.href = "/", 3000);
-</script>
-            `);
-            setTimeout(() => process.exit(0), 2000);
-        });
-    }
-    
-    else if (url === '/api/status') {
+    if (url === '/api/status' || url === '/status') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ 
             status: botStatus,
             hasQR: !!latestQR,
-            qr: latestQR,
-            prefix: global.BOT_PREFIX
+            prefix: global.BOT_PREFIX,
+            hasSession: fs.existsSync(path.join(AUTH_FOLDER, 'creds.json'))
         }));
     }
     
     else {
-        res.writeHead(404, { 'Content-Type': 'text/html' });
-        res.end('<center><h1>404</h1><a href="/">Home</a></center>');
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ 
+            status: 'running',
+            message: 'Xlicon WhatsApp Bot',
+            endpoints: ['/api/status', '/status']
+        }));
     }
 });
 
 server.listen(PORT, () => {
-    console.log(`✅ Bot running at http://localhost:${PORT}`);
+    console.log(`✅ Bot running on port ${PORT}`);
+    console.log(`📊 Status API: http://localhost:${PORT}/api/status`);
 });
 
 process.on('uncaughtException', (err) => {
