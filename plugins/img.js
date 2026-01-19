@@ -31,16 +31,16 @@ module.exports = {
 
             const images = res.data.data.slice(0, count);
 
-            for (const img of images) {
-                await sock.sendMessage(m.from, {
-                    image: { url: img.image }
-                });
-            }
-
             if (images.length === 1) {
                 await m.reply(`Here is a ${query}`);
             } else {
                 await m.reply(`Here are ${images.length} ${query}s`);
+            }
+
+            for (const img of images) {
+                await sock.sendMessage(m.from, {
+                    image: { url: img.image }
+                });
             }
 
         } catch (err) {
