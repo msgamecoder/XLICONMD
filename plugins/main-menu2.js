@@ -8,7 +8,7 @@ module.exports = {
     async execute(sock, m) {
         try {
             await sendInteractiveMessage(sock, m.from, {
-                title: '🤖 ABZTech ᴍᴜʟᴛɪᴅᴇᴠɪᴄᴇ',
+                title: 'XLICON v2 ᴍᴜʟᴛɪᴅᴇᴠɪᴄᴇ',
                 text: `Tap any button below to execute the command instantly:\n\n` +
                       `Current prefix: *${global.BOT_PREFIX}*\n\n` +
                       '> 「 𝙏𝙞𝙢𝙚 - 𝙏𝙞𝙢𝙚𝙡𝙚𝙨𝙨 」',
