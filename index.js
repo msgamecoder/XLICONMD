@@ -23,7 +23,6 @@ if (!fs.existsSync(__dirname + '/session/creds.json') && global.sessionid) {
 }
 
 // ===== CONFIGURATION ===== //
-global.BOT_PREFIX = '.';
 const AUTH_FOLDER = './session';
 const PLUGIN_FOLDER = './plugins';
 const PORT = process.env.PORT || 3000;
