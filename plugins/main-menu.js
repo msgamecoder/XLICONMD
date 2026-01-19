@@ -8,22 +8,24 @@ module.exports = {
         const prefix = '.';
 
         const menuText = `
-            XLIOCN *ᴍᴜʟᴛɪᴅᴇᴠɪᴄᴇ*  
+XLIOCN *ᴍᴜʟᴛɪᴅᴇᴠɪᴄᴇ*  
 
   ┌─ム *Available Commands*
-  ┃ ᪣  ${prefix}alive
-  ┃ ᪣  arise
-  ┃ ᪣  ${prefix}poll
-  ┃ ᪣  ${prefix}couplepp
-  ┃ ᪣  ${prefix}owner
-  ┃ ᪣   >
-  ┃ ᪣  ${prefix}ping
-  ┃ ᪣  ${prefix}sticker
-  ┃ ᪣  ${prefix}tagall
-  ┃ ᪣  ${prefix}tagme
-  ┃ ᪣  ${prefix}uptime
-  ┃ ᪣  ${prefix}tts
+  ┃ ᪣ ${prefix}alive
+  ┃ ᪣ ${prefix}arise
+  ┃ ᪣ ${prefix}poll
+  ┃ ᪣ ${prefix}couplepp
+  ┃ ᪣ ${prefix}owner
+  ┃ ᪣ >
+  ┃ ᪣ ${prefix}ping
+  ┃ ᪣ ${prefix}sticker
+  ┃ ᪣ ${prefix}tagall
+  ┃ ᪣ ${prefix}tagme
+  ┃ ᪣ ${prefix}uptime
+  ┃ ᪣ ${prefix}tts
+  ┃ ᪣ ${prefix}ai
   ╰─────────◆────────╯
+
 > 「 𝙏𝙞𝙢𝙚 - 𝙏𝙞𝙢𝙚𝙡𝙚𝙨𝙨 」
         `.trim();
 
