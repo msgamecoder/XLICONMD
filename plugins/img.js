@@ -10,19 +10,22 @@ module.exports = {
     async execute(sock, m, args) {
         try {
             if (!args[0]) {
-                return m.reply('Usage: .img <query> [count]\nExample: .img sung jin woo 3');
+                return m.reply('Usage: .img <query> [count]');
+            }
+
+            let count = parseInt(args[args.length - 1]);
+            if (isNaN(count)) count = 1;
+            if (count > 5) count = 5;
+
+            if (!isNaN(parseInt(args[args.length - 1]))) {
+                args.pop();
             }
 
             const query = args.join(' ');
-            let count = parseInt(args[args.length - 1]);
-
-            if (isNaN(count)) count = 3;
-            if (count > 5) count = 5;
-
             const url = `https://ab-pinetrest.abrahamdw882.workers.dev/?query=${encodeURIComponent(query)}`;
 
             const res = await axios.get(url);
-            if (!res.data || !res.data.status || !res.data.data.length) {
+            if (!res.data?.status || !res.data.data.length) {
                 return m.reply('No images found.');
             }
 
@@ -30,17 +33,18 @@ module.exports = {
 
             for (const img of images) {
                 await sock.sendMessage(m.from, {
-                    image: { url: img.image },
-                    caption:
-`📌 *${img.title || 'Pinterest Image'}*
-👤 ${img.uploader.full_name}
-🔗 ${img.pin_url}`
+                    image: { url: img.image }
                 });
             }
 
+            if (images.length === 1) {
+                await m.reply(`Here is a ${query}`);
+            } else {
+                await m.reply(`Here are ${images.length} ${query}s`);
+            }
+
         } catch (err) {
-            console.error('IMG plugin error:', err);
-            m.reply('Failed to fetch images. Try again later.');
+            m.reply('Failed to fetch images.');
         }
     }
 };
