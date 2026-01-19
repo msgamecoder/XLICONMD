@@ -13,8 +13,39 @@ module.exports = {
                 return m.reply('Usage: .ai <question>');
             }
 
-            const question = args.join(' ');
-            const url = `https://ab-llama-ai.abrahamdw882.workers.dev/?q=${encodeURIComponent(question)}`;
+            const userQuestion = args.join(' ');
+
+            let context = 'This is a private chat.';
+
+            if (m.isGroup) {
+                const metadata = await sock.groupMetadata(m.from);
+                const memberCount = metadata.participants.length;
+
+                context = `
+This message is from a WhatsApp group.
+Group name: "${metadata.subject}"
+Number of members: ${memberCount}
+`;
+            }
+
+            const instruction = `
+You are a WhatsApp AI assistant.
+You can fully use the provided context.
+If the user asks about the group, chat, members, or where they are, answer directly using the context.
+Do not say you lack information if it is present.
+`;
+
+            const finalPrompt = `
+${instruction}
+
+Context:
+${context}
+
+User question:
+${userQuestion}
+`;
+
+            const url = `https://ab-llama-ai.abrahamdw882.workers.dev/?q=${encodeURIComponent(finalPrompt)}`;
 
             const res = await axios.get(url);
             const answer = res.data?.response || res.data?.data;
@@ -23,14 +54,7 @@ module.exports = {
                 return m.reply('No response from AI.');
             }
 
-            let footer = '> XLICON MD';
-
-            if (m.isGroup) {
-                const metadata = await sock.groupMetadata(m.from);
-                footer = `> XLICON MD | ${metadata.subject}`;
-            }
-
-            await m.reply(`${answer}\n\n${footer}`);
+            await m.reply(`${answer}\n\n> XLICON MD`);
 
         } catch (err) {
             m.reply('AI failed to respond.');
