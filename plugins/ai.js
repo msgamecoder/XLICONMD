@@ -23,7 +23,14 @@ module.exports = {
                 return m.reply('No response from AI.');
             }
 
-            await m.reply(`${answer}\n\n> XLICON MD`);
+            let footer = '> XLICON MD';
+
+            if (m.isGroup) {
+                const metadata = await sock.groupMetadata(m.from);
+                footer = `> XLICON MD | ${metadata.subject}`;
+            }
+
+            await m.reply(`${answer}\n\n${footer}`);
 
         } catch (err) {
             m.reply('AI failed to respond.');
