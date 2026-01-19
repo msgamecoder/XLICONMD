@@ -11,7 +11,7 @@ module.exports = {
     async execute(sock, m, args) {
         try {
             if (!args[0]) {
-                return m.reply(`Please provide a GitHub link\n\nExample: .gitdl https://github.com/Guru322/api`);
+                return m.reply(`Please provide a GitHub link\n\nExample: .gitdl https://github.com/salmanytofficial/XLICON-V2-MD`);
             }
 
             if (!regex.test(args[0])) {
