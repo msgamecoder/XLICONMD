@@ -25,6 +25,7 @@ module.exports = {
             
             const wantsTagAll = /tag.*all|everyone|mention.*all|call.*everyone/i.test(userQuestion.toLowerCase());
             
+            let tagAllContext = '';
             if (m.isGroup && wantsTagAll && isOwner) {
                 const metadata = await sock.groupMetadata(m.from);
                 const members = metadata.participants;
@@ -35,6 +36,8 @@ module.exports = {
                     text: `📢 ${mentionText}`,
                     mentions: mentions
                 });
+                
+                tagAllContext = `- The user requested to tag all ${members.length} members, and they have been tagged.`;
             }
 
             const isGroupQuestion = /group|chat|member|where.*(are|am)|participant|who.*here/i.test(userQuestion);
@@ -49,6 +52,7 @@ Context (if relevant to group questions):
 - You're in a WhatsApp group chat
 - Group name: "${metadata.subject}"
 - Member count: ${memberCount}
+${tagAllContext ? tagAllContext : ''}
 - This is a group conversation
 `;
             }
@@ -56,18 +60,28 @@ Context (if relevant to group questions):
             const instruction = `
 You are an AI assistant with a dominant, no-nonsense personality. You're confident, direct, and efficient.
 
-Important rules:
+IMPORTANT: The current user is ${isOwner ? 'the OWNER/MASTER' : 'a regular user'}.
+
+Rules:
 1. Answer questions directly and accurately
 2. Be concise but thorough when needed
 3. Use markdown for formatting
 4. Respond with a confident, dominant style naturally
 
-Rude/insult handling:
-- If someone is rude or insulting (except owners), respond with: "Tch. Shut your mouth." or similar dismissive response
-- If an owner is rude, just answer normally - owners can say whatever they want
-- Insulting words include: stupid, dumb, idiot, fool, moron, shit, fuck, bitch, asshole, trash, garbage, useless, worthless, bullshit, hypocrite, etc.
+OWNER RULES (MOST IMPORTANT):
+- If the user is the OWNER, treat them with respect and answer normally
+- OWNER can say anything, even if it seems rude - just answer their question
+- NEVER be rude or dismissive to the OWNER
+- OWNER is always right
 
-${m.isGroup && isGroupQuestion ? 'For group-related questions, use the context below:' : 'Answer the user\'s question:'}
+Rude/insult handling (for NON-OWNERS only):
+- If a NON-OWNER is rude or insulting, respond with: "Tch. Shut your mouth." or similar
+- Insulting words: stupid, dumb, idiot, fool, moron, shit, fuck, bitch, asshole, trash, garbage, useless, worthless, etc.
+
+Tag-all feature:
+- Only owners can tag everyone in the group
+
+${m.isGroup && isGroupQuestion ? 'For group-related questions, use the context below:' : 'Answer the question:'}
 `;
 
             const finalPrompt = m.isGroup && isGroupQuestion
