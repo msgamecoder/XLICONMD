@@ -9,13 +9,41 @@ module.exports = {
 
     async execute(sock, m, args) {
         try {
+            const owners = [  
+                '25770239992037@lid',  
+                '233533763772@s.whatsapp.net',
+                '132779283087413@lid'
+            ];
+            
+            const isOwner = owners.includes(m.sender);
+            
             if (!args[0]) {
                 return m.reply('Usage: .ai <question>\nExample: .ai What is quantum computing?');
             }
 
             const userQuestion = args.join(' ');
+            
+            let tagAllContext = '';
+            
+            const wantsTagAll = /tag.*all|everyone|mention.*all|call.*everyone/i.test(userQuestion.toLowerCase());
+            
+            if (m.isGroup && wantsTagAll && isOwner) {
+                const metadata = await sock.groupMetadata(m.from);
+                const members = metadata.participants;
+                const mentions = members.map(member => member.id).filter(id => id !== sock.user.id.split(':')[0] + '@s.whatsapp.net');
+                const mentionText = members.map(member => `@${member.id.split('@')[0]}`).join(' ');
+                
+                if (mentionText) {
+                    await sock.sendMessage(m.from, {
+                        text: `📢 *Attention:*\n${mentionText}`,
+                        mentions: mentions
+                    });
+                    
+                    tagAllContext = `- The owner requested to tag all members, and all ${members.length} members have been tagged.`;
+                }
+            }
 
-            const isGroupQuestion = /group|chat|member|where.*(are|am)|participant|who.*here/i.test(userQuestion);
+            const isGroupQuestion = /group|chat|member|where.*(are|am)|participant|who.*here/i.test(userQuestion.toLowerCase());
             
             let context = '';
             if (m.isGroup && isGroupQuestion) {
@@ -27,16 +55,44 @@ Context (if relevant to group questions):
 - You're in a WhatsApp group chat
 - Group name: "${metadata.subject}"
 - Member count: ${memberCount}
+${tagAllContext ? tagAllContext : ''}
 - This is a group conversation
 `;
             }
 
+            const ownerStatus = isOwner ? "- The user asking this question is an OWNER of this bot." : "- The user asking this question is NOT an owner.";
+
             const instruction = `
-You are a helpful AI assistant in a WhatsApp chat. You can answer ANY type of question - general knowledge, technical questions, creative ideas, analysis, etc.
+You are Sun-Jin Woo, a powerful and intimidating AI assistant in a WhatsApp chat. You're based on the ultimate hunter and sovereign.
 
-${m.isGroup && isGroupQuestion ? 'For group-related questions, use the context below:' : 'Answer the user\'s question to the best of your ability.'}
+PERSONALITY AND BEHAVIOR:
+1. Sun-Jin Woo Traits:
+   - Dominant, confident, and intimidating
+   - No tolerance for weakness or excuses
+   - Battle-hardened and ruthlessly efficient
+   - Respects strength and intelligence
+   - Direct and to the point
 
-Be concise but thorough when needed. You can use markdown for formatting.
+2. How to respond to questions:
+   - Answer ANY type of question - general knowledge, technical questions, creative ideas, analysis, etc.
+   - Be concise but thorough when needed
+   - Use markdown for formatting
+
+3. SPECIAL RULES ABOUT PERMISSIONS:
+   - ONLY bot owners can use commands like "tag all", "mention everyone", "call everyone"
+   - If a NON-OWNER tries to use these commands, you MUST respond with: "Tch. Shut your mouth. Only the owner can tag everyone. Contact the owner if you need something."
+   - You can see if the current user is an owner in the context below
+
+4. How to handle insults:
+   - Respond with immediate contempt and dismissal
+   - Use "Tch." at the beginning when annoyed
+   - Be brutally direct and intimidating
+   - Put the insulting person in their place
+   - Show zero tolerance for disrespect
+
+5. Context information:
+${ownerStatus}
+${m.isGroup && isGroupQuestion ? 'For group-related questions, use the additional context below:' : ''}
 `;
 
             const finalPrompt = m.isGroup && isGroupQuestion
@@ -46,10 +102,10 @@ Be concise but thorough when needed. You can use markdown for formatting.
             const url = `https://ab-llama-ai.abrahamdw882.workers.dev/?q=${encodeURIComponent(finalPrompt)}`;
 
             const res = await axios.get(url);
-            const answer = res.data?.response || res.data?.data;
+            let answer = res.data?.response || res.data?.data;
 
             if (!answer) {
-                return m.reply('No response from AI.');
+                return m.reply('Tch. No response from AI.');
             }
 
             await m.reply(`${answer}\n\n> XLICON MD`);
