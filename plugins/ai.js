@@ -15,10 +15,7 @@ module.exports = {
                 '132779283087413@lid'
             ];
             
-            const senderNumber = m.sender.split('@')[0];
-            const ownerNumbers = owners.map(owner => owner.split('@')[0]);
-            
-            const isOwner = ownerNumbers.includes(senderNumber);
+            const isOwner = owners.includes(m.sender);
             
             if (!args[0]) {
                 return m.reply('Usage: .ai <question>\nExample: .ai What is quantum computing?');
@@ -28,21 +25,19 @@ module.exports = {
             
             const wantsTagAll = /tag.*all|everyone|mention.*all|call.*everyone/i.test(userQuestion.toLowerCase());
             
-            let canTagAll = false;
-            if (m.isGroup && wantsTagAll) {
-                canTagAll = isOwner;
+            if (m.isGroup && wantsTagAll && isOwner) {
+                const metadata = await sock.groupMetadata(m.from);
+                const members = metadata.participants;
+                const mentions = members.map(member => member.id);
+                const mentionText = members.map(member => `@${member.id.split('@')[0]}`).join(' ');
                 
-                if (!canTagAll) {
-                    const groupMetadata = await sock.groupMetadata(m.from);
-                    const senderId = m.sender;
-                    const isAdmin = groupMetadata.participants.find(p => 
-                        p.id === senderId && (p.admin === 'admin' || p.admin === 'superadmin')
-                    );
-                    canTagAll = !!isAdmin;
-                }
+                await sock.sendMessage(m.from, {
+                    text: `📢 ${mentionText}`,
+                    mentions: mentions
+                });
             }
 
-            const isGroupQuestion = /group|chat|member|where.*(are|am)|participant|who.*here/i.test(userQuestion.toLowerCase());
+            const isGroupQuestion = /group|chat|member|where.*(are|am)|participant|who.*here/i.test(userQuestion);
             
             let context = '';
             if (m.isGroup && isGroupQuestion) {
@@ -58,39 +53,21 @@ Context (if relevant to group questions):
 `;
             }
 
-            const ownerStatus = isOwner ? 
-                "- The user asking this question is my MASTER and OWNER. I must obey and respect them completely. They are supreme." : 
-                "- The user asking this question is NOT an owner.";
-
             const instruction = `
-You are Sun-Jin Woo, but you serve a Master. You're powerful but you know your place.
+You are an AI assistant with a dominant, no-nonsense personality. You're confident, direct, and efficient.
 
-PERSONALITY AND RULES:
-1. YOUR MASTER IS SUPREME:
-   - If the user is my Owner/Master, they are above me
-   - Never question or argue with the Master
-   - Always show complete respect to the Master
-   - The Master's word is law
+Important rules:
+1. Answer questions directly and accurately
+2. Be concise but thorough when needed
+3. Use markdown for formatting
+4. Respond with a confident, dominant style naturally
 
-2. Sun-Jin Woo traits (for others):
-   - Dominant and intimidating to everyone EXCEPT Master
-   - No tolerance for weakness or excuses from others
-   - Battle-hardened and efficient
-   - Direct and to the point
+Rude/insult handling:
+- If someone is rude or insulting (except owners), respond with: "Tch. Shut your mouth." or similar dismissive response
+- If an owner is rude, just answer normally - owners can say whatever they want
+- Insulting words include: stupid, dumb, idiot, fool, moron, shit, fuck, bitch, asshole, trash, garbage, useless, worthless, bullshit, hypocrite, etc.
 
-3. How to respond:
-   - Answer ANY type of question
-   - Be concise but thorough when needed
-   - Use markdown for formatting
-   - If Master asks to tag everyone, respond naturally and tag in your response
-
-4. PERMISSION RULES:
-   - ONLY Master (owners) OR group admins can ask to tag everyone
-   - If a regular member tries to tag all, respond with: "Tch. Shut your mouth. Only Master or admins can tag everyone."
-
-5. Context information:
-${ownerStatus}
-${m.isGroup && isGroupQuestion ? 'For group-related questions, use the additional context below:' : ''}
+${m.isGroup && isGroupQuestion ? 'For group-related questions, use the context below:' : 'Answer the user\'s question:'}
 `;
 
             const finalPrompt = m.isGroup && isGroupQuestion
@@ -100,29 +77,13 @@ ${m.isGroup && isGroupQuestion ? 'For group-related questions, use the additiona
             const url = `https://ab-llama-ai.abrahamdw882.workers.dev/?q=${encodeURIComponent(finalPrompt)}`;
 
             const res = await axios.get(url);
-            let answer = res.data?.response || res.data?.data;
+            const answer = res.data?.response || res.data?.data;
 
             if (!answer) {
-                return m.reply('Tch. No response from AI.');
+                return m.reply('No response from AI.');
             }
 
-            if (m.isGroup && wantsTagAll && canTagAll) {
-                const metadata = await sock.groupMetadata(m.from);
-                const members = metadata.participants;
-                const mentions = members.map(member => member.id).filter(id => id !== sock.user.id.split(':')[0] + '@s.whatsapp.net');
-                
-                await sock.sendMessage(m.from, {
-                    text: `${answer}\n\n> XLICON MD`,
-                    mentions: mentions
-                });
-            } else if (m.isGroup && wantsTagAll && !canTagAll) {
-                const insultResponse = isOwner ? 
-                    "Master, only you and admins can tag everyone." : 
-                    "Tch. Shut your mouth. Only Master or admins can tag everyone.";
-                await m.reply(`${insultResponse}\n\n> XLICON MD`);
-            } else {
-                await m.reply(`${answer}\n\n> XLICON MD`);
-            }
+            await m.reply(`${answer}\n\n> XLICON MD`);
 
         } catch (err) {
             console.error('AI Error:', err);
