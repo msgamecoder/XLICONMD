@@ -4,7 +4,8 @@ const axios = require('axios');
 const owners = [
   '25770239992037@lid',
   '227903916765325@lid', 
-  '233533763772@s.whatsapp.net'
+  '233533763772@s.whatsapp.net', 
+  '132779283087413@lid'
 ];
 
 let sentOnce = new Set();
