@@ -15,7 +15,10 @@ module.exports = {
                 '132779283087413@lid'
             ];
             
-            const isOwner = owners.includes(m.sender);
+            const senderNumber = m.sender.split('@')[0];
+            const ownerNumbers = owners.map(owner => owner.split('@')[0]);
+            
+            const isOwner = ownerNumbers.includes(senderNumber);
             
             if (!args[0]) {
                 return m.reply('Usage: .ai <question>\nExample: .ai What is quantum computing?');
@@ -23,12 +26,11 @@ module.exports = {
 
             const userQuestion = args.join(' ');
             
-            let tagAllContext = '';
-            
             const wantsTagAll = /tag.*all|everyone|mention.*all|call.*everyone/i.test(userQuestion.toLowerCase());
             
+            let canTagAll = false;
             if (m.isGroup && wantsTagAll) {
-                let canTagAll = isOwner;
+                canTagAll = isOwner;
                 
                 if (!canTagAll) {
                     const groupMetadata = await sock.groupMetadata(m.from);
@@ -37,22 +39,6 @@ module.exports = {
                         p.id === senderId && (p.admin === 'admin' || p.admin === 'superadmin')
                     );
                     canTagAll = !!isAdmin;
-                }
-                
-                if (canTagAll) {
-                    const metadata = await sock.groupMetadata(m.from);
-                    const members = metadata.participants;
-                    const mentions = members.map(member => member.id).filter(id => id !== sock.user.id.split(':')[0] + '@s.whatsapp.net');
-                    const mentionText = members.map(member => `@${member.id.split('@')[0]}`).join(' ');
-                    
-                    if (mentionText) {
-                        await sock.sendMessage(m.from, {
-                            text: `📢 *Attention:*\n${mentionText}`,
-                            mentions: mentions
-                        });
-                        
-                        tagAllContext = `- The user requested to tag all members, and all ${members.length} members have been tagged.`;
-                    }
                 }
             }
 
@@ -68,40 +54,39 @@ Context (if relevant to group questions):
 - You're in a WhatsApp group chat
 - Group name: "${metadata.subject}"
 - Member count: ${memberCount}
-${tagAllContext ? tagAllContext : ''}
 - This is a group conversation
 `;
             }
 
-            const ownerStatus = isOwner ? "- The user asking this question is an OWNER of this bot." : "- The user asking this question is NOT an owner.";
+            const ownerStatus = isOwner ? 
+                "- The user asking this question is my MASTER and OWNER. I must obey and respect them completely. They are supreme." : 
+                "- The user asking this question is NOT an owner.";
 
             const instruction = `
-You are Sun-Jin Woo, a powerful and intimidating AI assistant in a WhatsApp chat. You're based on the ultimate hunter and sovereign.
+You are Sun-Jin Woo, but you serve a Master. You're powerful but you know your place.
 
-PERSONALITY AND BEHAVIOR:
-1. Sun-Jin Woo Traits:
-   - Dominant, confident, and intimidating
-   - No tolerance for weakness or excuses
-   - Battle-hardened and ruthlessly efficient
-   - Respects strength and intelligence
+PERSONALITY AND RULES:
+1. YOUR MASTER IS SUPREME:
+   - If the user is my Owner/Master, they are above me
+   - Never question or argue with the Master
+   - Always show complete respect to the Master
+   - The Master's word is law
+
+2. Sun-Jin Woo traits (for others):
+   - Dominant and intimidating to everyone EXCEPT Master
+   - No tolerance for weakness or excuses from others
+   - Battle-hardened and efficient
    - Direct and to the point
 
-2. How to respond to questions:
-   - Answer ANY type of question - general knowledge, technical questions, creative ideas, analysis, etc.
+3. How to respond:
+   - Answer ANY type of question
    - Be concise but thorough when needed
    - Use markdown for formatting
+   - If Master asks to tag everyone, respond naturally and tag in your response
 
-3. SPECIAL RULES ABOUT PERMISSIONS:
-   - ONLY bot owners OR group admins can use commands like "tag all", "mention everyone", "call everyone"
-   - If a regular member tries to use these commands, you MUST respond with: "Tch. Shut your mouth. Only owners or admins can tag everyone."
-   - You can see if the current user is an owner in the context below
-
-4. How to handle insults:
-   - Respond with immediate contempt and dismissal
-   - Use "Tch." at the beginning when annoyed
-   - Be brutally direct and intimidating
-   - Put the insulting person in their place
-   - Show zero tolerance for disrespect
+4. PERMISSION RULES:
+   - ONLY Master (owners) OR group admins can ask to tag everyone
+   - If a regular member tries to tag all, respond with: "Tch. Shut your mouth. Only Master or admins can tag everyone."
 
 5. Context information:
 ${ownerStatus}
@@ -121,7 +106,23 @@ ${m.isGroup && isGroupQuestion ? 'For group-related questions, use the additiona
                 return m.reply('Tch. No response from AI.');
             }
 
-            await m.reply(`${answer}\n\n> XLICON MD`);
+            if (m.isGroup && wantsTagAll && canTagAll) {
+                const metadata = await sock.groupMetadata(m.from);
+                const members = metadata.participants;
+                const mentions = members.map(member => member.id).filter(id => id !== sock.user.id.split(':')[0] + '@s.whatsapp.net');
+                
+                await sock.sendMessage(m.from, {
+                    text: `${answer}\n\n> XLICON MD`,
+                    mentions: mentions
+                });
+            } else if (m.isGroup && wantsTagAll && !canTagAll) {
+                const insultResponse = isOwner ? 
+                    "Master, only you and admins can tag everyone." : 
+                    "Tch. Shut your mouth. Only Master or admins can tag everyone.";
+                await m.reply(`${insultResponse}\n\n> XLICON MD`);
+            } else {
+                await m.reply(`${answer}\n\n> XLICON MD`);
+            }
 
         } catch (err) {
             console.error('AI Error:', err);
