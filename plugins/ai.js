@@ -27,19 +27,32 @@ module.exports = {
             
             const wantsTagAll = /tag.*all|everyone|mention.*all|call.*everyone/i.test(userQuestion.toLowerCase());
             
-            if (m.isGroup && wantsTagAll && isOwner) {
-                const metadata = await sock.groupMetadata(m.from);
-                const members = metadata.participants;
-                const mentions = members.map(member => member.id).filter(id => id !== sock.user.id.split(':')[0] + '@s.whatsapp.net');
-                const mentionText = members.map(member => `@${member.id.split('@')[0]}`).join(' ');
+            if (m.isGroup && wantsTagAll) {
+                let canTagAll = isOwner;
                 
-                if (mentionText) {
-                    await sock.sendMessage(m.from, {
-                        text: `📢 *Attention:*\n${mentionText}`,
-                        mentions: mentions
-                    });
+                if (!canTagAll) {
+                    const groupMetadata = await sock.groupMetadata(m.from);
+                    const senderId = m.sender;
+                    const isAdmin = groupMetadata.participants.find(p => 
+                        p.id === senderId && (p.admin === 'admin' || p.admin === 'superadmin')
+                    );
+                    canTagAll = !!isAdmin;
+                }
+                
+                if (canTagAll) {
+                    const metadata = await sock.groupMetadata(m.from);
+                    const members = metadata.participants;
+                    const mentions = members.map(member => member.id).filter(id => id !== sock.user.id.split(':')[0] + '@s.whatsapp.net');
+                    const mentionText = members.map(member => `@${member.id.split('@')[0]}`).join(' ');
                     
-                    tagAllContext = `- The owner requested to tag all members, and all ${members.length} members have been tagged.`;
+                    if (mentionText) {
+                        await sock.sendMessage(m.from, {
+                            text: `📢 *Attention:*\n${mentionText}`,
+                            mentions: mentions
+                        });
+                        
+                        tagAllContext = `- The user requested to tag all members, and all ${members.length} members have been tagged.`;
+                    }
                 }
             }
 
@@ -79,8 +92,8 @@ PERSONALITY AND BEHAVIOR:
    - Use markdown for formatting
 
 3. SPECIAL RULES ABOUT PERMISSIONS:
-   - ONLY bot owners can use commands like "tag all", "mention everyone", "call everyone"
-   - If a NON-OWNER tries to use these commands, you MUST respond with: "Tch. Shut your mouth. Only the owner can tag everyone. Contact the owner if you need something."
+   - ONLY bot owners OR group admins can use commands like "tag all", "mention everyone", "call everyone"
+   - If a regular member tries to use these commands, you MUST respond with: "Tch. Shut your mouth. Only owners or admins can tag everyone."
    - You can see if the current user is an owner in the context below
 
 4. How to handle insults:
