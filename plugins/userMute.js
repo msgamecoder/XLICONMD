@@ -1,5 +1,12 @@
 const mutedUsers = {};
 
+function normalizeJid(jid) {
+  if (!jid) return jid;
+  return jid.endsWith('@s.whatsapp.net')
+    ? jid
+    : `${jid.split('@')[0]}@s.whatsapp.net`;
+}
+
 module.exports = {
   name: 'mute',
   aliases: ['unmute'],
@@ -9,12 +16,12 @@ module.exports = {
     if (!m.isGroup) return;
 
     const groupJid = m.from;
-    const metadata = await sock.groupMetadata(groupJid);
-    const botJid = sock.user.id;
+    const metadata = m.groupMetadata || await sock.groupMetadata(groupJid);
+    const botJid = normalizeJid(sock.user.id);
 
     const isBotAdmin = metadata.participants.some(
       p =>
-        p.id === botJid &&
+        normalizeJid(p.id) === botJid &&
         (p.admin === 'admin' || p.admin === 'superadmin')
     );
 
@@ -24,15 +31,17 @@ module.exports = {
       });
     }
 
-    const target =
+    const rawTarget =
       m.mentionedJid?.[0] ||
       m.quoted?.sender;
 
-    if (!target) {
+    if (!rawTarget) {
       return sock.sendMessage(groupJid, {
         text: 'Mention a user or reply to their message.'
       });
     }
+
+    const target = normalizeJid(rawTarget);
 
     if (!mutedUsers[groupJid]) {
       mutedUsers[groupJid] = new Set();
@@ -49,7 +58,7 @@ module.exports = {
 
     mutedUsers[groupJid].add(target);
 
-    await sock.sendMessage(groupJid, {
+    return sock.sendMessage(groupJid, {
       text: `🔇 @${target.split('@')[0]} muted`,
       mentions: [target]
     });
@@ -60,9 +69,9 @@ module.exports = {
     if (m.key.fromMe) return;
 
     const groupJid = m.from;
-    const sender = m.sender;
-
     if (!mutedUsers[groupJid]) return;
+
+    const sender = normalizeJid(m.sender);
 
     if (mutedUsers[groupJid].has(sender)) {
       try {
