@@ -18,7 +18,8 @@ module.exports = {
 
     if (!owners.includes(m.sender)) return;
 
-    const participants = m.mentionedJid;
+    const participants =
+      m.message?.extendedTextMessage?.contextInfo?.mentionedJid;
 
     if (!participants || !participants.length) return;
 
