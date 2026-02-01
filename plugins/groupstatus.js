@@ -35,19 +35,16 @@ module.exports = {
                 return m.reply('✅ Text group status sent!');
             }
 
-            const q = m.quoted;
-            const type = q.mtype;
-            const caption =
-                q.message?.imageMessage?.caption ||
-                q.message?.videoMessage?.caption ||
-                '';
+            const targetMsg = m.quoted;
+            let mediaBuffer, caption;
 
-            if (type === 'imageMessage') {
-                const buffer = await q.download();
+            if (targetMsg.message?.imageMessage) {
+                mediaBuffer = await targetMsg.download();
+                caption = targetMsg.message.imageMessage.caption || '';
 
                 await sock.sendMessage(groupId, {
                     groupStatusMessage: {
-                        image: buffer,
+                        image: mediaBuffer,
                         caption
                     }
                 });
@@ -55,12 +52,13 @@ module.exports = {
                 return m.reply('✅ Image group status sent!');
             }
 
-            if (type === 'videoMessage') {
-                const buffer = await q.download();
+            if (targetMsg.message?.videoMessage) {
+                mediaBuffer = await targetMsg.download();
+                caption = targetMsg.message.videoMessage.caption || '';
 
                 await sock.sendMessage(groupId, {
                     groupStatusMessage: {
-                        video: buffer,
+                        video: mediaBuffer,
                         caption
                     }
                 });
@@ -68,21 +66,21 @@ module.exports = {
                 return m.reply('✅ Video group status sent!');
             }
 
-            if (type === 'audioMessage') {
-                const buffer = await q.download();
+            if (targetMsg.message?.audioMessage) {
+                mediaBuffer = await targetMsg.download();
 
                 await sock.sendMessage(groupId, {
                     groupStatusMessage: {
-                        audio: buffer,
-                        mimetype: 'audio/mp4',
-                        ptt: q.message.audioMessage?.ptt || false
+                        audio: mediaBuffer,
+                        mimetype: targetMsg.message.audioMessage.mimetype || 'audio/mp4',
+                        ptt: targetMsg.message.audioMessage.ptt || false
                     }
                 });
 
                 return m.reply('✅ Audio group status sent!');
             }
 
-            m.reply('❌ Unsupported message type.');
+            m.reply('❌ The replied message does not contain supported media.');
         } catch (err) {
             console.error('GroupStatus Error:', err);
             m.reply('❌ Failed to send group status.');
