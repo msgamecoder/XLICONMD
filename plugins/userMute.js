@@ -8,50 +8,48 @@ module.exports = {
   async execute(sock, m) {
     if (!m.isGroup) return;
 
-    const metadata = await sock.groupMetadata(m.from);
-    const botNum = sock.user.id.split('@')[0];
+    const groupJid = m.from;
+    const metadata = await sock.groupMetadata(groupJid);
+    const botJid = sock.user.id;
 
     const isBotAdmin = metadata.participants.some(
       p =>
-        p.id.startsWith(botNum) &&
+        p.id === botJid &&
         (p.admin === 'admin' || p.admin === 'superadmin')
     );
 
     if (!isBotAdmin) {
-      return sock.sendMessage(m.from, { text: 'I must be admin.' });
+      return sock.sendMessage(groupJid, {
+        text: 'I must be admin.'
+      });
     }
 
-    const text = m.body || m.text || '';
-    let target = null;
-
-    const match = text.match(/@(\d{5,})/);
-    if (match) {
-      const num = match[1];
-      target = metadata.participants.find(p =>
-        p.id.startsWith(num)
-      )?.id;
-    } else if (m.quoted?.sender) {
-      target = m.quoted.sender;
-    }
+    const target =
+      m.mentionedJid?.[0] ||
+      m.quoted?.sender;
 
     if (!target) {
-      return sock.sendMessage(m.from, {
+      return sock.sendMessage(groupJid, {
         text: 'Mention a user or reply to their message.'
       });
     }
 
-    if (!mutedUsers[m.from]) mutedUsers[m.from] = new Set();
+    if (!mutedUsers[groupJid]) {
+      mutedUsers[groupJid] = new Set();
+    }
 
     if (m.command === 'unmute') {
-      mutedUsers[m.from].delete(target);
-      return sock.sendMessage(m.from, {
+      mutedUsers[groupJid].delete(target);
+
+      return sock.sendMessage(groupJid, {
         text: `🔊 @${target.split('@')[0]} unmuted`,
         mentions: [target]
       });
     }
 
-    mutedUsers[m.from].add(target);
-    await sock.sendMessage(m.from, {
+    mutedUsers[groupJid].add(target);
+
+    await sock.sendMessage(groupJid, {
       text: `🔇 @${target.split('@')[0]} muted`,
       mentions: [target]
     });
@@ -59,12 +57,18 @@ module.exports = {
 
   async onMessage(sock, m) {
     if (!m.isGroup) return;
-    if (!mutedUsers[m.from]) return;
     if (m.key.fromMe) return;
 
-    if (mutedUsers[m.from].has(m.sender)) {
+    const groupJid = m.from;
+    const sender = m.sender;
+
+    if (!mutedUsers[groupJid]) return;
+
+    if (mutedUsers[groupJid].has(sender)) {
       try {
-        await sock.sendMessage(m.from, { delete: m.key });
+        await sock.sendMessage(groupJid, {
+          delete: m.key
+        });
       } catch {}
     }
   }
