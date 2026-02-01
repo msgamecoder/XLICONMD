@@ -3,7 +3,7 @@ const mutedUsers = {};
 module.exports = {
   name: 'mute',
   aliases: ['unmute'],
-  description: 'Mute or unmute a tagged user',
+  description: 'Mute or unmute a user',
 
   async execute(sock, m) {
     if (!m.isGroup) return;
@@ -18,15 +18,17 @@ module.exports = {
     );
 
     if (!isBotAdmin) {
-      return sock.sendMessage(m.from, { text: '❌ I must be admin.' });
+      return sock.sendMessage(m.from, { text: 'I must be admin.' });
     }
 
+    const text = m.body || m.text || '';
     let target = null;
 
-    if (m.mentionedJid?.length) {
-      const mentionNum = m.mentionedJid[0].split('@')[0];
+    const match = text.match(/@(\d{5,})/);
+    if (match) {
+      const num = match[1];
       target = metadata.participants.find(p =>
-        p.id.startsWith(mentionNum)
+        p.id.startsWith(num)
       )?.id;
     } else if (m.quoted?.sender) {
       target = m.quoted.sender;
@@ -34,7 +36,7 @@ module.exports = {
 
     if (!target) {
       return sock.sendMessage(m.from, {
-        text: '❌ Mention a user or reply to their message.'
+        text: 'Mention a user or reply to their message.'
       });
     }
 
@@ -42,17 +44,15 @@ module.exports = {
 
     if (m.command === 'unmute') {
       mutedUsers[m.from].delete(target);
-
       return sock.sendMessage(m.from, {
-        text: `🔊 @${target.split('@')[0]} has been unmuted.`,
+        text: `🔊 @${target.split('@')[0]} unmuted`,
         mentions: [target]
       });
     }
 
     mutedUsers[m.from].add(target);
-
     await sock.sendMessage(m.from, {
-      text: `🔇 @${target.split('@')[0]} has been muted.`,
+      text: `🔇 @${target.split('@')[0]} muted`,
       mentions: [target]
     });
   },
