@@ -9,14 +9,16 @@ module.exports = {
     if (!m.isGroup) return;
 
     const metadata = await sock.groupMetadata(m.from);
-    const botJid = sock.user.id;
+    const botNum = sock.user.id.split('@')[0];
 
     const isBotAdmin = metadata.participants.some(
-      p => p.id === botJid && (p.admin === 'admin' || p.admin === 'superadmin')
+      p =>
+        p.id.startsWith(botNum) &&
+        (p.admin === 'admin' || p.admin === 'superadmin')
     );
 
     if (!isBotAdmin) {
-      return sock.sendMessage(m.from, { text: 'I must be admin.' });
+      return sock.sendMessage(m.from, { text: '❌ I must be admin.' });
     }
 
     let target = null;
@@ -32,7 +34,7 @@ module.exports = {
 
     if (!target) {
       return sock.sendMessage(m.from, {
-        text: 'Mention a user or reply to their message.'
+        text: '❌ Mention a user or reply to their message.'
       });
     }
 
