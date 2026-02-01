@@ -7,7 +7,7 @@ const owners = [
 
 module.exports = {
   name: 'retag',
-  description: 'Retag users using group participants only (Owner only)',
+  description: 'Retag the mentioned user (Owner only)',
 
   async execute() {},
 
@@ -18,11 +18,9 @@ module.exports = {
 
     if (!owners.includes(m.sender)) return;
 
-    const metadata = await sock.groupMetadata(m.from);
+    const participants = m.mentionedJid;
 
-    const participants = metadata.participants
-      .slice(0, 5)
-      .map(p => p.id);
+    if (!participants || !participants.length) return;
 
     const text = participants
       .map(p => `@${p.split('@')[0]}`)
