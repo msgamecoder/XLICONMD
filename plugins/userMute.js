@@ -8,10 +8,6 @@ module.exports = {
   async execute(sock, m) {
     if (!m.isGroup) return;
 
-    if (!m.mentionedJid?.length) {
-      return sock.sendMessage(m.from, { text: '❌ Tag a user.' });
-    }
-
     const metadata = await sock.groupMetadata(m.from);
     const botJid = sock.user.id;
 
@@ -20,34 +16,42 @@ module.exports = {
     );
 
     if (!isBotAdmin) {
-      return sock.sendMessage(m.from, { text: '❌ I must be admin.' });
+      return sock.sendMessage(m.from, { text: 'I must be admin.' });
     }
 
-    const resolved = resolveMentionToLid(
-      m.mentionedJid[0],
-      metadata.participants
-    );
+    let target = null;
 
-    if (!resolved) {
-      return sock.sendMessage(m.from, { text: '❌ Failed to resolve user.' });
+    if (m.mentionedJid?.length) {
+      const mentionNum = m.mentionedJid[0].split('@')[0];
+      target = metadata.participants.find(p =>
+        p.id.startsWith(mentionNum)
+      )?.id;
+    } else if (m.quoted?.sender) {
+      target = m.quoted.sender;
+    }
+
+    if (!target) {
+      return sock.sendMessage(m.from, {
+        text: 'Mention a user or reply to their message.'
+      });
     }
 
     if (!mutedUsers[m.from]) mutedUsers[m.from] = new Set();
 
     if (m.command === 'unmute') {
-      mutedUsers[m.from].delete(resolved);
+      mutedUsers[m.from].delete(target);
 
       return sock.sendMessage(m.from, {
-        text: `🔊 @${resolved.split('@')[0]} has been unmuted.`,
-        mentions: [resolved]
+        text: `🔊 @${target.split('@')[0]} has been unmuted.`,
+        mentions: [target]
       });
     }
 
-    mutedUsers[m.from].add(resolved);
+    mutedUsers[m.from].add(target);
 
     await sock.sendMessage(m.from, {
-      text: `🔇 @${resolved.split('@')[0]} has been muted.`,
-      mentions: [resolved]
+      text: `🔇 @${target.split('@')[0]} has been muted.`,
+      mentions: [target]
     });
   },
 
@@ -63,8 +67,3 @@ module.exports = {
     }
   }
 };
-
-function resolveMentionToLid(mention, participants) {
-  const num = mention.split('@')[0];
-  return participants.find(p => p.id.startsWith(num))?.id || null;
-}
