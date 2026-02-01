@@ -12,7 +12,6 @@ module.exports = {
       return sock.sendMessage(m.from, { text: '❌ Tag a user.' });
     }
 
-    const target = m.mentionedJid[0];
     const metadata = await sock.groupMetadata(m.from);
     const botJid = sock.user.id;
 
@@ -24,22 +23,31 @@ module.exports = {
       return sock.sendMessage(m.from, { text: '❌ I must be admin.' });
     }
 
+    const resolved = resolveMentionToLid(
+      m.mentionedJid[0],
+      metadata.participants
+    );
+
+    if (!resolved) {
+      return sock.sendMessage(m.from, { text: '❌ Failed to resolve user.' });
+    }
+
     if (!mutedUsers[m.from]) mutedUsers[m.from] = new Set();
 
     if (m.command === 'unmute') {
-      mutedUsers[m.from].delete(target);
+      mutedUsers[m.from].delete(resolved);
 
       return sock.sendMessage(m.from, {
-        text: `🔊 @${target.split('@')[0]} has been unmuted.`,
-        mentions: [target]
+        text: `🔊 @${resolved.split('@')[0]} has been unmuted.`,
+        mentions: [resolved]
       });
     }
 
-    mutedUsers[m.from].add(target);
+    mutedUsers[m.from].add(resolved);
 
     await sock.sendMessage(m.from, {
-      text: `🔇 @${target.split('@')[0]} has been muted.`,
-      mentions: [target]
+      text: `🔇 @${resolved.split('@')[0]} has been muted.`,
+      mentions: [resolved]
     });
   },
 
@@ -55,3 +63,8 @@ module.exports = {
     }
   }
 };
+
+function resolveMentionToLid(mention, participants) {
+  const num = mention.split('@')[0];
+  return participants.find(p => p.id.startsWith(num))?.id || null;
+}
