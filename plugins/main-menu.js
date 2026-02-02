@@ -27,6 +27,7 @@ XLIOCN *ᴍᴜʟᴛɪᴅᴇᴠɪᴄᴇ*
   ┃ ᪣ ${prefix}ocr
   ┃ ᪣ ${prefix}tagall1
   ┃ ᪣ ${prefix}ai-search
+  ┃ ᪣ ${prefix}gstatus
   ╰─────────◆────────╯
 
 > 「 𝙏𝙞𝙢𝙚 - 𝙏𝙞𝙢𝙚𝙡𝙚𝙨𝙨 」
