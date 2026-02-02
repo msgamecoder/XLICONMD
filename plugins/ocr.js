@@ -1,41 +1,53 @@
-const axios = require('axios');
+const axios = require('axios')
+const FormData = require('form-data')
 
 module.exports = {
-    name: 'ocr',
-    description: 'Extract text from an image URL',
-    aliases: ['gettext', 'imagetotext'],
-    tags: ['tools'],
-    command: /^\.?(ocr|gettext|imagetotext)/i,
+  name: 'ocr',
+  description: 'Extract text from an image',
+  aliases: ['readtext'],
+  tags: ['tools'],
+  command: /^\.?(ocr|readtext)$/i,
 
-    async execute(sock, m, args) {
-        try {
-            if (!args[0]) {
-                return m.reply(
-                    'Provide link\nExample OCR link'
-                );
-            }
+  async execute(sock, m, args) {
+    try {
+      if (!m.quoted) return m.reply('Reply to an image to extract text.')
+      if (!m.quoted.message?.imageMessage)
+        return m.reply(' Please reply to an image.')
 
-            const imageUrl = args[0];
-            const apiUrl = `https://eliteprotech-apis.zone.id/ocr?url=${encodeURIComponent(imageUrl)}`;
+      m.reply(' > ⏳ Reading text from image...')
 
-            const res = await axios.get(apiUrl);
-            const data = res.data;
+      const buffer = await m.quoted.download()
 
-            if (!data || !data.success) {
-                return m.reply('Failed to extract text from the image.');
-            }
+      const form = new FormData()
+      form.append('apikey', process.env.OCR_API_KEY || 'K81241004488957')
+      form.append('language', 'eng')
+      form.append('isOverlayRequired', 'false')
+      form.append('file', buffer, {
+        filename: 'image.jpg',
+        contentType: 'image/jpeg',
+      })
 
-            const text = data.text?.trim();
-
-            if (!text) {
-                return m.reply('No text detected in the image.');
-            }
-
-            await m.reply(`🧾 OCR Result\n\n${text}`);
-
-        } catch (err) {
-            console.error('OCR Error:', err);
-            m.reply('OCR failed. Please try again later.');
+      const res = await axios.post(
+        'https://api.ocr.space/parse/image',
+        form,
+        {
+          headers: form.getHeaders(),
+          maxBodyLength: Infinity,
         }
+      )
+
+      if (res.data.OCRExitCode !== 1) {
+        return m.reply(' OCR failed.')
+      }
+
+      const text = res.data.ParsedResults?.[0]?.ParsedText?.trim()
+
+      if (!text) return m.reply('No text detected.')
+
+      m.reply(`📄 *OCR Result:*\n\n${text}`)
+    } catch (err) {
+      console.error('OCR Error:', err)
+      m.reply('Failed to process OCR.')
     }
-};
+  },
+}
