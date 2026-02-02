@@ -2,43 +2,44 @@ const yts = require('yt-search');
 
 module.exports = {
     name: 'ytsearch',
-    description: 'Search YouTube videos',
-    aliases: ['yts', 'yt'],
-    tags: ['search'],
-    command: /^\.?(ytsearch|yts|yt)$/i,
+    description: 'Search for a YouTube video',
+    aliases: ['youtube', 'yt'],
+    tags: ['search', 'youtube'],
+    command: /^\.?(ytsearch|youtube|yt)/i,
 
     async execute(sock, m, args) {
         try {
-            if (!args.length) {
-                return m.reply('Usage: .ytsearch <query>\nExample: .ytsearch Wizkid Essence');
+            if (!args[0]) {
+                return m.reply('Usage: .ytsearch <search query>\nExample: .ytsearch lo-fi music');
             }
 
             const query = args.join(' ');
-            const res = await yts(query);
-            const videos = res.videos.slice(0, 5);
 
-            if (!videos.length) {
-                return m.reply('No results found.');
+            const results = await yts(query);
+
+            if (!results || !results.videos || results.videos.length === 0) {
+                return m.reply('No results found on YouTube.');
             }
 
-            let text = `🔎 YouTube Search Results\n\n`;
+            const video = results.videos[0];
 
-            videos.forEach((v, i) => {
-                text +=
-`*${i + 1}. ${v.title}*
-⏱ Duration: ${v.timestamp}
-👤 Channel: ${v.author.name}
-👁 Views: ${v.views.toLocaleString()}
-🔗 ${v.url}
-
+            const replyMessage = `
+🎬 *${video.title}*
+📌 Link: ${video.url}
+⏱ Duration: ${video.timestamp}
+👁 Views: ${video.views.toLocaleString()}
+📅 Uploaded: ${video.ago}
+🎥 Channel: ${video.author.name}
 `;
+
+            await sock.sendMessage(m.from, {
+                image: { url: video.thumbnail },
+                caption: replyMessage
             });
 
-            await sock.sendMessage(m.from, { text });
-
         } catch (err) {
-            console.error('YTSearch Error:', err);
-            m.reply('❌ Failed to search YouTube.');
+            console.error('YouTube Search Error:', err);
+            m.reply('Failed to search YouTube. Please try again later.');
         }
     }
 };
