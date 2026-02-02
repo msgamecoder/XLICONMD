@@ -24,6 +24,9 @@ XLIOCN *ᴍᴜʟᴛɪᴅᴇᴠɪᴄᴇ*
   ┃ ᪣ ${prefix}uptime
   ┃ ᪣ ${prefix}tts
   ┃ ᪣ ${prefix}ai
+  ┃ ᪣ ${prefix}ocr
+  ┃ ᪣ ${prefix}tagall1
+  ┃ ᪣ ${prefix}ai-search
   ╰─────────◆────────╯
 
 > 「 𝙏𝙞𝙢𝙚 - 𝙏𝙞𝙢𝙚𝙡𝙚𝙨𝙨 」
