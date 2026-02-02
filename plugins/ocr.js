@@ -14,7 +14,7 @@ module.exports = {
       if (!m.quoted.message?.imageMessage)
         return m.reply(' Please reply to an image.')
 
-      m.reply(' > ⏳ Reading text from image...')
+      m.reply('⏳ Reading text from image...')
 
       const buffer = await m.quoted.download()
 
