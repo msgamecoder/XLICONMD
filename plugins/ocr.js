@@ -1,5 +1,6 @@
 const axios = require('axios')
 const FormData = require('form-data')
+const { sendInteractiveMessage } = require('gifted-btns')
 
 module.exports = {
   name: 'ocr',
@@ -12,9 +13,7 @@ module.exports = {
     try {
       if (!m.quoted) return m.reply('Reply to an image to extract text.')
       if (!m.quoted.message?.imageMessage)
-        return m.reply(' Please reply to an image.')
-
-      m.reply('> ⏳ Reading text from image...')
+        return m.reply('Please reply to an image.')
 
       const buffer = await m.quoted.download()
 
@@ -37,14 +36,29 @@ module.exports = {
       )
 
       if (res.data.OCRExitCode !== 1) {
-        return m.reply(' OCR failed.')
+        return m.reply('OCR failed.')
       }
 
       const text = res.data.ParsedResults?.[0]?.ParsedText?.trim()
-
       if (!text) return m.reply('No text detected.')
 
-      m.reply(`📄 *OCR Result:*\n\n${text}`)
+      await sendInteractiveMessage(sock, m.from, {
+        title: 'OCR RESULT',
+        text: text.length > 3800
+          ? text.slice(0, 3800) + '\n\nText trimmed'
+          : text,
+        footer: 'XLICON v2 - Aʙᴢᴛᴇᴄʜ 🇬🇭',
+        interactiveButtons: [
+          {
+            name: 'copy',
+            buttonParamsJson: JSON.stringify({
+              display_text: 'Copy Text',
+              copy_code: text
+            })
+          }
+        ]
+      })
+
     } catch (err) {
       console.error('OCR Error:', err)
       m.reply('Failed to process OCR.')
