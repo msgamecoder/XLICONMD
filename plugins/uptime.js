@@ -1,3 +1,4 @@
+const { sendInteractiveMessage } = require('gifted-btns');
 const process = require('process');
 
 module.exports = {
@@ -6,7 +7,7 @@ module.exports = {
     description: 'Check how long the bot has been running.',
 
     async execute(sock, m) {
-        const uptime = process.uptime(); 
+        const uptime = process.uptime();
 
         const hours = Math.floor(uptime / 3600);
         const minutes = Math.floor((uptime % 3600) / 60);
@@ -14,6 +15,19 @@ module.exports = {
 
         const formattedTime = `${hours}h ${minutes}m ${seconds}s`;
 
-        await m.reply(`⏱️ Bot Uptime: ${formattedTime}`);
+        await sendInteractiveMessage(sock, m.from, {
+            title: '⏱️ BOT UPTIME',
+            text: `The bot has been running for:\n\n*${formattedTime}*`,
+            footer: 'XLICON v2 • Abztech',
+            interactiveButtons: [
+                {
+                    name: 'cta_url',
+                    buttonParamsJson: JSON.stringify({
+                        display_text: '🌐 Visit Website',
+                        url: 'https://abztech.my.id'
+                    })
+                }
+            ]
+        });
     }
 };
