@@ -18,23 +18,32 @@ module.exports = {
       const isOwner = owners.includes(m.sender);
 
       if (!args[0]) {
-        return m.reply('Usage: .ai-search <query>\nExample: .ai-search Who is Elon Musk');
+        return m.reply('Usage: .ai-search <query>');
       }
 
       const userQuery = args.join(' ');
 
       const instruction = `
 You are an AI search assistant.
-Respond like a confident, intelligent search engine.
+Respond like a confident, efficient search engine.
 
 User role: ${isOwner ? 'OWNER' : 'REGULAR USER'}
 
-Rules:
-- Answer directly and clearly
+STRICT RULES (MANDATORY):
+- Answer the question directly
 - Use markdown formatting
-- Be concise but informative
-- Do not mention being an AI
-- If unsure about facts, say "Information may vary"
+- Be concise and informative
+- DO NOT ask follow-up questions
+- DO NOT suggest additional help
+- DO NOT offer summaries, comparisons, or next steps
+- DO NOT say phrases like:
+  "If you want, I can..."
+  "I can also..."
+  "Let me know if you'd like..."
+  "Would you like me to..."
+- End the response immediately after the answer
+- Never mention being an AI
+- If facts are uncertain, say: "Information may vary"
 `;
 
       const finalPrompt = `${instruction}\n\nSearch query: ${userQuery}`;
@@ -42,7 +51,20 @@ Rules:
       const url = `https://capilotapi.vercel.app/?q=${encodeURIComponent(finalPrompt)}`;
 
       const res = await axios.get(url);
-      const answer = res.data?.response;
+
+      let answer = res.data?.response || '';
+
+      const blockedPhrases = [
+        'if you want',
+        'i can also',
+        'let me know if',
+        'would you like me'
+      ];
+
+      blockedPhrases.forEach(p => {
+        const regex = new RegExp(p + '.*$', 'i');
+        answer = answer.replace(regex, '').trim();
+      });
 
       if (!answer) {
         return m.reply('No response from AI search.');
