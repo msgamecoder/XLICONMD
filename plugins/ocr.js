@@ -9,7 +9,7 @@ module.exports = {
   tags: ['tools'],
   command: /^\.?(ocr|readtext)$/i,
 
-  async execute(sock, m, args) {
+  async execute(sock, m) {
     try {
       if (!m.quoted) return m.reply('Reply to an image to extract text.')
       if (!m.quoted.message?.imageMessage)
@@ -42,18 +42,18 @@ module.exports = {
       const text = res.data.ParsedResults?.[0]?.ParsedText?.trim()
       if (!text) return m.reply('No text detected.')
 
+      const safeText = text.slice(0, 3500)
+
       await sendInteractiveMessage(sock, m.from, {
         title: 'OCR RESULT',
-        text: text.length > 3800
-          ? text.slice(0, 3800) + '\n\nText trimmed'
-          : text,
+        text: safeText,
         footer: 'XLICON v2 - Aʙᴢᴛᴇᴄʜ 🇬🇭',
         interactiveButtons: [
           {
-            name: 'copy',
+            name: 'cta_copy',
             buttonParamsJson: JSON.stringify({
               display_text: 'Copy Text',
-              copy_code: text
+              copy_code: safeText
             })
           }
         ]
